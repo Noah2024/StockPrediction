@@ -14,7 +14,9 @@ def yesNoInput(prompt):
         else:
             print("Invalid input. Please enter 'y' or 'n'.")
 
-def selectFile(): #Yoinked from chatGPT
+def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
+    current_file_path = os.path.abspath(__file__)
+    return current_file_path
     while True:
         filePath = input("Please enter the full path to the file: (type \'exit\' to exit)")
         if os.path.isfile(filePath):
@@ -90,20 +92,22 @@ class MainStart:
 
     def createNewModel(Self):
         modelName = input("Enter the name of the new model: ")
-        print("Please Select InputX Data to train on")
-        InputDataX = selectFile()
-        print("Please Select InputY Data to train on")
-        InputDataY = selectFile()
-        arch = SelectModelArchitecture()
-        if modelName or InputDataX or InputDataY or arch == None:
-            print("Invalid Paramters: Model creation cancelled.")
-            return None
-        advParam = yesNoInput("Do you want to add advanced parameters? (y/n): ")
+        advParam = yesNoInput("Do you want to load an advanced template? (y/n): ")
         if advParam:
             print("Advanced parameters can be set here.")
             # Placeholder for advanced parameters
         else:
             print("No advanced parameters selected.")
+            print("Please Select InputX Data to train on")
+            InputDataX = selectFile()
+            print("Please Select InputY Data to train on")
+            InputDataY = selectFile()
+            arch = SelectModelArchitecture()
+            print(modelName or InputDataX or InputDataY or arch)
+            if modelName == None or InputDataX == None or InputDataY == None or arch == None:
+                print("Invalid Paramters: Model creation cancelled.")
+                return None
+        
         
 
     
