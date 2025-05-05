@@ -3,6 +3,7 @@
 #Create New Models, Add them, remove them, run simulations, and check results
 import tensorflow as tf
 from tensorflow import keras
+import json
 import os
 
 def yesNoInput(prompt):
@@ -96,6 +97,7 @@ class MainStart:
         advParam = yesNoInput("Do you want to load an advanced template? (y/n): ")
         if advParam:
             print("Advanced parameters can be set here.")
+            
             # Placeholder for advanced parameters
         else:
             print("No advanced parameters selected.")

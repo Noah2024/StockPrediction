@@ -1,0 +1,21 @@
+{
+  "model_name": "MyModel",
+  "input_shape": [32],
+  "num_classes": 10,
+  "architecture": [64, 32, 16],
+  "optimizer": "adam",
+  "learning_rate": 0.001,
+  "batch_size": 32,
+  "epochs": 50,
+  "dropout_rate": 0.5,
+  "activation": "relu",
+  "weight_initializer": "he_normal",
+  "regularization": {"type": "l2", "value": 0.01},
+  "early_stopping": {"monitor": "val_loss", "patience": 5},
+  "lr_scheduler": {"type": "exponential_decay", "decay_rate": 0.96},
+  "validation_split": 0.2,
+  "loss_function": "categorical_crossentropy",
+  "metrics": ["accuracy", "precision", "recall"],
+  "gradient_clipping": {"clipnorm": 1.0},
+  "data_augmentation": {"rotation_range": 30, "horizontal_flip": true}
+}
