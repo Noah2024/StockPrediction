@@ -5,6 +5,7 @@ import tensorflow as tf
 from tensorflow import keras
 import json
 import os
+import numpy as np
 
 def yesNoInput(prompt):
     while True:
@@ -44,16 +45,31 @@ def SelectModelArchitecture():#Exit Not working yete
                 print("Invalid architecture format. Please enter a list of integers.")
         except (SyntaxError, NameError):
             print("Invalid architecture format. Please enter a list of integers.")
-            
-def tensorFlowModel(inputShape, numClasses, architecture):
-        model = keras.Sequential()
-        model.add(keras.layers.InputLayer(shape=inputShape))  # Input layer expects data with shape `input_shape`
-        for i in range(len(architecture)-1):
-            model.add(keras.layers.Dense(architecture[i], activation='relu'))
-        model.add(keras.layers.Dense(numClasses, activation=None))
-        model.compile(optimizer='adam', loss='mse', metrics=['accuracy'])
-        return model
+    #inputShape, numClasses, architecture, 
+
+def loadTemplateData(templatePath):
+    with open(templatePath, 'r') as file:
+        data = json.load(file)
+        print("PATH:", data["xInputPath"])
+        xInputData = np.loadtxt(f'{data["xInputPath"]}', delimiter=',', skiprows=1)#
+        yInputData = np.loadtxt(f'{data["yInputPath]"]}', delimiter=',', skiprows=1)
+    # Extracting the required fields from the loaded data
+    
+    return data, xInputData, yInputData
+
+def tensorFlowModel(template):
+         config, xInputData, yInputData = loadTemplateData(template)
+         finalActiveFunc = None if config.modelType == "regression" else 'softmax'
+
+         model = keras.Sequential()
+         model.add(keras.layers.InputLayer(shape=xInputData.shape))  # Input layer expects data with shape `input_shape`
+         for i in range(len(config["architecture"])-1):
+             model.add(keras.layers.Dense(config["architecture"][i], activation=config["activationFunc"]))
+         model.add(keras.layers.Dense(config.numClasses, activation=finalActiveFunc))
+         model.compile(optimizer=config["optimizer"], loss=config["lossFunction"], metrics=["metrics"])
+         return model
 class MainStart:
+    
     def __init__(self):
         self.models = []  # List to store models
         self.current_model = None  # Currently selected model
@@ -94,10 +110,13 @@ class MainStart:
 
     def createNewModel(Self):
         modelName = input("Enter the name of the new model: ")
-        advParam = yesNoInput("Do you want to load an advanced template? (y/n): ")
-        if advParam:
-            print("Advanced parameters can be set here.")
-            
+        default = yesNoInput("Do you want to load the default model template? (y/n): ")
+
+        if default:
+            print("Loading default model template...")
+            model = tensorFlowModel("ModelTemplates/default.json")
+           
+
             # Placeholder for advanced parameters
         else:
             print("No advanced parameters selected.")
