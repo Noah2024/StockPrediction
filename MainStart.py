@@ -7,6 +7,8 @@ import json
 import os
 import numpy as np
 
+simStatus = False #Simulation Status
+
 def yesNoInput(prompt):
     while True:
         response = input(prompt).strip().lower()
@@ -57,17 +59,42 @@ def loadTemplateData(templatePath):
     
     return data, xInputData, yInputData
 
-def tensorFlowModel(template):
-         config, xInputData, yInputData = loadTemplateData(template)
-         finalActiveFunc = None if config.modelType == "regression" else 'softmax'
+def tensorFlowModel(templatePath, modelName):
+    print("Template Path:", templatePath)
+    config = None
+    print("Loading template data...")
+    with open(templatePath, 'r') as file:
+        config = json.load(file)
+        print("PATH:", config["xInputPath"])
+        xInputData = np.loadtxt(f'{config["xInputPath"]}', delimiter=',', skiprows=1)#
+        yInputData = np.loadtxt(f'{config["yInputPath"]}', delimiter=',', skiprows=1)
 
-         model = keras.Sequential()
-         model.add(keras.layers.InputLayer(shape=xInputData.shape))  # Input layer expects data with shape `input_shape`
-         for i in range(len(config["architecture"])-1):
-             model.add(keras.layers.Dense(config["architecture"][i], activation=config["activationFunc"]))
-         model.add(keras.layers.Dense(config.numClasses, activation=finalActiveFunc))
-         model.compile(optimizer=config["optimizer"], loss=config["lossFunction"], metrics=["metrics"])
-         return model
+    finalActiveFunc = None if config["modelType"] == "regression" else 'softmax'
+
+    model = keras.Sequential()
+    model.add(keras.layers.InputLayer(shape=xInputData[0].shape))  # Input layer expects data with shape `input_shape`
+    for i in range(len(config["architecture"])-1):
+        model.add(keras.layers.Dense(config["architecture"][i], activation=config["activation"]))
+    model.add(keras.layers.Dense(config["numClasses"], activation=finalActiveFunc))
+    model.compile(optimizer=config["optimizer"], loss=config["lossFunction"], metrics=config["metrics"])
+    
+    print("Model Created")
+    print("Fitting Model...")
+    dataset = tf.data.Dataset.from_tensor_slices((xInputData, yInputData))
+    dataset = dataset.batch(config["batchSize"]).prefetch(tf.data.AUTOTUNE)
+    
+    history = model.fit(dataset, epochs=config["epochs"],batch_size=config["batchSize"], verbose=0)
+    print("Model Fitted")
+
+    model.save(config["modelPath"] + modelName + ".keras")
+    print("modelSaved")
+    return model, history
+
+    
+
+    return model, config
+
+    
 class MainStart:
     
     def __init__(self):
@@ -78,6 +105,7 @@ class MainStart:
         while True:
             print("-----------------------")
             print("Main Menu:")
+            print(f"Simulation Status: {'Running' if simStatus else 'Not Running'}")
             print("-----------------------")
             print("1. Create New Model")
             print("2. Add Model To Simulation")
@@ -114,10 +142,8 @@ class MainStart:
 
         if default:
             print("Loading default model template...")
-            model = tensorFlowModel("ModelTemplates/default.json")
-           
-
-            # Placeholder for advanced parameters
+            model, config = tensorFlowModel("ModelTemplates/default.json", modelName)
+            breakpoint()
         else:
             print("No advanced parameters selected.")
             print("Please Select InputX Data to train on")
