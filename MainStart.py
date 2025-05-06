@@ -50,11 +50,13 @@ def SelectModelArchitecture():#Exit Not working yete
     #inputShape, numClasses, architecture, 
 
 def loadTemplateData(templatePath):
+    dataHeader = None
     with open(templatePath, 'r') as file:
         data = json.load(file)
         print("PATH:", data["xInputPath"])
         xInputData = np.loadtxt(f'{data["xInputPath"]}', delimiter=',', skiprows=1)#
         yInputData = np.loadtxt(f'{data["yInputPath]"]}', delimiter=',', skiprows=1)
+        dataHeader = np.loadtxt(f'{data["xInputPath"]}', delimiter=',', max_rows=1, dtype=str)  
     # Extracting the required fields from the loaded data
     
     return data, xInputData, yInputData
@@ -68,6 +70,7 @@ def tensorFlowModel(templatePath, modelName):
         print("PATH:", config["xInputPath"])
         xInputData = np.loadtxt(f'{config["xInputPath"]}', delimiter=',', skiprows=1)#
         yInputData = np.loadtxt(f'{config["yInputPath"]}', delimiter=',', skiprows=1)
+        dataHeader = np.loadtxt(f'{config["xInputPath"]}', delimiter=',', max_rows=1, dtype=str)
 
     finalActiveFunc = None if config["modelType"] == "regression" else 'softmax'
 
@@ -86,7 +89,14 @@ def tensorFlowModel(templatePath, modelName):
     history = model.fit(dataset, epochs=config["epochs"],batch_size=config["batchSize"], verbose=0)
     print("Model Fitted")
 
-    model.save(config["modelPath"] + modelName + ".keras")
+    model.save(config["modelPath"] + modelName + ".keras")#Reshaped becuase by default it was populated with 1D data
+    np.savetxt(
+    f"./FakeTranscationHistory/{modelName}.csv",
+    np.append(yInputData[len(yInputData)-1], [100, 0]).reshape(1, -1),  # Append and reshape to a single row
+    delimiter=",",
+    fmt="%d",
+    header=",".join(list(dataHeader) + ["Cash", "Shares"]),  # Convert header to a string and append new columns
+    comments="")
     print("modelSaved")
     return model, history
 
@@ -145,16 +155,10 @@ class MainStart:
             model, config = tensorFlowModel("ModelTemplates/default.json", modelName)
             breakpoint()
         else:
-            print("No advanced parameters selected.")
-            print("Please Select InputX Data to train on")
-            InputDataX = selectFile()
-            print("Please Select InputY Data to train on")
-            InputDataY = selectFile()
-            arch = SelectModelArchitecture()
-            print(modelName or InputDataX or InputDataY or arch)
-            if modelName == None or InputDataX == None or InputDataY == None or arch == None:
-                print("Invalid Paramters: Model creation cancelled.")
-                return None
+           print("Enter the path to an alternative .json model template:")
+           selectFile()
+           
+        return 
         
         
 
