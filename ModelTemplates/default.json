@@ -4,7 +4,7 @@
   "numClasses": 6,
   "architecture": [64, 32, 16],
   "batchSize": 32,
-  "epochs": 100,
+  "epochs": 1000,
   "xInputPath": "./Data/xTrainInput.txt",
   "yInputPath": "./Data/yTrainInput.txt",
   "activation": "relu",
