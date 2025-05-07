@@ -6,6 +6,7 @@ from tensorflow import keras
 import json
 import os
 import numpy as np
+import time
 
 simStatus = False #Simulation Status
 
@@ -91,13 +92,27 @@ def tensorFlowModel(templatePath, modelName):
 
     model.save(config["modelPath"] + modelName + ".keras")#Reshaped becuase by default it was populated with 1D data
     np.savetxt(
-    f"./FakeTranscationHistory/{modelName}.csv",
+    f"./ModelDataHistory/{modelName}.csv",
     np.append(yInputData[len(yInputData)-1], [100, 0]).reshape(1, -1),  # Append and reshape to a single row
     delimiter=",",
     fmt="%d",
     header=",".join(list(dataHeader) + ["Cash", "Shares"]),  # Convert header to a string and append new columns
     comments="")
     print("modelSaved")
+
+    print("Saving Model MetaData")
+    data = {
+        "modelName": modelName,
+        "ticker": config["ticker"],
+        "cash": 100,
+        "shares": 0,
+        "lastUpdated": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
+    }
+    
+    with open(f"./ModelDataHistory/{modelName}.json", "w") as file:
+        json.dump(data, file, indent=4)
+
+    print("Model MetaData Saved")
     return model, history
 
     
@@ -153,6 +168,7 @@ class MainStart:
         if default:
             print("Loading default model template...")
             model, config = tensorFlowModel("ModelTemplates/default.json", modelName)
+            
             breakpoint()
         else:
            print("Enter the path to an alternative .json model template:")
