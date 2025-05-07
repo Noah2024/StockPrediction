@@ -15,13 +15,14 @@ def getCurtStockData():
 
 def getTransactionHistory(modelName):
     # print("Test: ", np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=',',skiprows=1))
+    header = np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=",", max_rows=1, dtype=str)
     cash, shares = np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=',',skiprows=1, usecols=(6,7))#Get the cash and shares from the transaction history
-    return cash, shares, np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=',',skiprows=1, usecols=(0,1,2,3,4,5))#
+    return cash, shares,header, np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=',',skiprows=1, usecols=(0,1,2,3,4,5))#
     pass
 
 def Main():
     models = glob.glob("./ActiveModels/*.keras")
-    curtData = getCurtStockData()
+    #curtData = getCurtStockData() There is no current data cause the market has just opened
     loadedModels = {}
     for modelPath in models:
         modelName = os.path.basename(modelPath).split(".")[0]
@@ -29,33 +30,32 @@ def Main():
         
     for modelName, model in loadedModels.items():
         print(f"MODEL NAME: {modelName} Loaded")
-        print("Cutrent Data: ", curtData)
-        cash, shares, curtTradeData = getTransactionHistory(modelName)
-        #Lines 34 to 41 are used as a benchmark to scale buying and selling, may be a bad idea, may remove later
-        accuracyPrediction = model.predict(curtTradeData[np.newaxis, :])#Predict the stock data using the model
+        #print("Cutrent Data: ", curtData)
+        cash, shares, header, curtTradeData = getTransactionHistory(modelName)
+        prediction = model.predict(curtTradeData[np.newaxis, :])#Predict the stock data using the model
         
-        diff = curtTradeData[0] - accuracyPrediction[0][0]#Get the difference between the predicted and actual data
-        accuracy = (1 - abs(diff / curtTradeData[0]))#* 100 
-        # print(f"Actual: {curtTradeData[0]}, Predicted: {accuracyPrediction[0][0]}")
-        # print(f"Difference: {diff}")
-        # print(f"Accuracy: {accuracy}%")
-        #[np.newaxis, :]
-        prediction = model.predict(curtData)#Predict the stock data using the model
-        # print(f"Actual: {curtData[0][0]}, Predicted: {prediction[0][0]}")
-        # print(f"Actual NEXT STEP Prediction: {prediction}")
-        # print("Actual Diff: ", prediction[0][0] - prediction[0][0])
-        if (prediction[0][0] - curtData[0][0])  < 0:
+        if (prediction[0][0] - curtTradeData[0])  < 0:
             print(f"{modelName} Predicts Stock will do Down, selling stock")
-            cash += shares * curtData[0][0]
+            cash += shares * curtTradeData[0]
             shares = 0
         else:
             print(f"{modelName} Predicts Stock will do Up, buying stock")
-            sharesToBuy = cash % curtData[0][0]#Get the current ammount of stock to buy
-            cash -= sharesToBuy * curtData[0][0]
+            sharesToBuy = cash % curtTradeData[0]#Get the current ammount of stock to buy
+            cash -= sharesToBuy * curtTradeData[0]
             shares += sharesToBuy
+        print("Current Trade Data: ", curtTradeData)
+        updateTradeData = np.append(curtTradeData, [cash, shares]).reshape(1, -1)
+        print(" Update Trade Data:", updateTradeData)       
+        np.savetxt(
+            f"./FakeTranscationHistory/{modelName}.csv",
+            updateTradeData,
+            delimiter=",",
+            fmt="%d",
+            header=",".join(header)  # Convert the NumPy array to a comma-separated stringer
+        )
         print(f"Cash: {cash}, Shares: {shares}")
 
-        
+
         # print("TRADE DATA", curtTradeData)
         # print(f"Prediction: {prediction}")
 
