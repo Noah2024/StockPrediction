@@ -2,6 +2,8 @@ import sys
 import os
 import glob
 import numpy as np
+import time
+import json
 from tensorflow.keras.models import load_model
 
 #!DO TO! Make Sure Trade data returns all 6 values needed DONE
@@ -14,23 +16,29 @@ from tensorflow.keras.models import load_model
 def getCurtStockData():
     return np.asarray([24.3,22.3,23.6,24.4,1000,0])[np.newaxis, : ]#Example Data#API's will be added later
 
-def getTransactionHistory(modelName):
-    # print("Test: ", np.loadtxt(f'./FakeTranscationHistory/{modelName}.csv', delimiter=',',skiprows=1))
-    header = np.loadtxt(f'./ModelDataHistory/{modelName}.csv', delimiter=",", max_rows=1, dtype=str)
-    cash, shares = np.loadtxt(f'./ModelDataHistory/{modelName}.csv', delimiter=',',skiprows=1, usecols=(6,7))#Get the cash and shares from the transaction history
-    return cash, shares,header, np.loadtxt(f'./ModelDataHistory/{modelName}.csv', delimiter=',',skiprows=1, usecols=(0,1,2,3,4,5))#
-    pass
+def getTransactionHistory(modelName):#Copoilet improved
+    file_path = f'./ModelDataHistory/{modelName}.csv'
+    # Load the entire CSV file, skipping the header
+    data = np.loadtxt(file_path, delimiter=",", skiprows=1)  # Load all rows and columns
+    print("Data Shape Before:", data.shape)
+
+    # Ensure the data is always a 2D array
+    data = np.atleast_2d(data)
+
+    print("Data Shape After:", data.shape)
+    return data[-1, :6]  # Get the last row and select the first 6 columns
 
 def addTradeToQueue(modelName, Ticker, buySell, quantity, price, dateQue):
-    tradeData = np.asarray([Ticker, buySell, quantity, price, dateQue]).reshape(1, -1)
+    tradeData = np.asarray([modelName, Ticker, buySell, quantity, price, dateQue]).reshape(1, -1)
+    print("Trade Data:", tradeData)  # Debugging
+    print("Data Type:", tradeData.dtype)  # Debugging
     with open(f"./Data/tradeQue.csv", "a", newline="") as file:
         np.savetxt(
             file,
             tradeData,
             delimiter=",",
-            fmt="%d",
+            fmt="%s",  # Use string format specifier
         )
-    pass
 
 def Main():
     models = glob.glob("./ActiveModels/*.keras")
@@ -42,8 +50,16 @@ def Main():
         
     for modelName, model in loadedModels.items():
         print(f"MODEL NAME: {modelName} Loaded")
+        modelMetaData = None
+        with open(f"./ModelDataHistory/{modelName}.json", "r") as file:
+            modelMetaData = json.load(file)
+        cash = modelMetaData["cash"]
+        shares = modelMetaData["shares"]
+
         #print("Cutrent Data: ", curtData)
-        cash, shares, header, curtTradeData = getTransactionHistory(modelName)
+        curtTradeData = getTransactionHistory(modelName)
+        print("curtTradeData:", curtTradeData)
+        print("curtTradeData shape:", np.shape(curtTradeData))
         prediction = model.predict(curtTradeData[np.newaxis, :])#Predict the stock data using the model
         if (prediction[0][0] - curtTradeData[0])  < 0:
             print(f"{modelName} Predicts Stock will do Down, selling stock")
@@ -64,8 +80,21 @@ def Main():
                 delimiter=",",
                 fmt="%d",
             )
-        print(f"Cash: {cash}, Shares: {shares}")
-
+        print(f"Cash: {cash}, Shares: {shares}")#Debugged with copoilet
+        print("modelName type:", type(modelName))
+        print("ticker type:", type(modelMetaData["ticker"]))
+        print("buySell type:", type("Buy" if shares > 0 else "Sell"))
+        print("shares type:", type(shares))
+        print("curtTradeData[0] type:", type(curtTradeData[0]))
+        print("dateQue type:", type(time.strftime("%Y-%m-%d %H:%M:%S")))
+        addTradeToQueue(
+            str(modelName),  # Ensure modelName is a string
+            str(modelMetaData["ticker"]),  # Ensure ticker is a string
+            "Buy" if shares > 0 else "Sell",  # This is already a string
+            str(shares),  # Convert shares to a string
+            str(curtTradeData[0]),  # Ensure curtTradeData[0] is a string
+            str(time.strftime("%Y-%m-%d %H:%M:%S"))  # This is already a string
+        )
 
         # print("TRADE DATA", curtTradeData)
         # print(f"Prediction: {prediction}")
