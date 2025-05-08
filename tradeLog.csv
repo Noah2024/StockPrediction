@@ -1,0 +1,7 @@
+<Model>, <Ticker>, <Buy/Sell>, <Quantity>, <Price>, <DateQue>, <DateActual>
+anotherTest,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:45:57
+TestModel,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:45:57
+TestModel2,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:45:57
+anotherTest,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:48:07
+TestModel,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:48:07
+TestModel2,MILK,Sell,0,24.0,2025-05-07 19:41:35,2025-05-07 19:48:07

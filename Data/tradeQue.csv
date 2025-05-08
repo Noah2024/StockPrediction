@@ -1,4 +1,1 @@
 <Model>, <Ticker>, <Buy/Sell>, <Quantity>, <Price>, <DateQue>, <DateActual>
-anotherTest,MILK,Sell,0,24.0,2025-05-07 17:11:13
-TestModel,MILK,Sell,0,24.0,2025-05-07 17:11:14
-TestModel2,MILK,Sell,0,24.0,2025-05-07 17:11:15

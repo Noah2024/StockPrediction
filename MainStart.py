@@ -1,8 +1,6 @@
 
 #This will be the script to start the program and run the main menu
 #Create New Models, Add them, remove them, run simulations, and check results
-import tensorflow as tf
-from tensorflow import keras
 import json
 import os
 import numpy as np
@@ -63,6 +61,11 @@ def loadTemplateData(templatePath):
     return data, xInputData, yInputData
 
 def tensorFlowModel(templatePath, modelName):
+    print("Loading TensorFlow Dependencies...")
+    import tensorflow as tf
+    from tensorflow import keras
+    print("TensorFlow Keras loaded successfully!")
+
     print("Template Path:", templatePath)
     config = None
     print("Loading template data...")
@@ -155,7 +158,7 @@ class MainStart:
             elif choice == '6':
                 self.check_results()
             elif choice == '7':
-                self.check_results()
+                self.checkResults()
             elif choice == '8':
                 break
             else:
@@ -173,8 +176,22 @@ class MainStart:
         else:
            print("Enter the path to an alternative .json model template:")
            selectFile()
-           
-        return 
+        return
+    
+    def checkResults(Self):
+        import pandas as pd
+        import matplotlib.pyplot as plt
+        for file in os.listdir("./ModelDataHistory"):
+            if file.endswith(".csv"):  
+                print(f"Processing file: {file}")
+                df = pd.read_csv("./ModelDataHistory/" + file)
+                # Plot specific columns
+                plt.plot(df["<OPEN>"], df["<HIGH>"], label="Open vs High")
+                plt.xlabel("Open")
+                plt.ylabel("High")
+                plt.title("Plot from CSV")
+                plt.legend()
+                plt.show()
         
         
 
