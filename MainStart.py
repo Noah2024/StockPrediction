@@ -24,7 +24,7 @@ def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
     while True:
         filePath = input("Please enter the full path to the file: (type \'exit\' to exit)")
         if os.path.isfile(filePath):
-            print(f"Selected file: {filePath}")
+        # print(f"Selected file: {filePath}")
             return filePath
         elif filePath == "exit":
             print("Exiting file selection.")
@@ -148,9 +148,9 @@ class MainStart:
             if choice == '1':
                 self.createNewModel()
             elif choice == '2':
-                self.add_model()
+                self.addFromArchive()
             elif choice == '3':
-                self.remove_model()
+                self.archiveModel()
             elif choice == '4':
                 self.run_simulation()
             elif choice == '5':
@@ -163,6 +163,41 @@ class MainStart:
                 break
             else:
                 print("Invalid choice, please try again.")
+    
+    def addFromArchive(Self):
+        modelName = input("Please enter the name of the model to add: (type \'exit\' to exit)")
+        if modelName == "exit":
+            print("Exiting add model.")
+            return None
+        model = f"./ArchivedModels/{modelName}.keras"
+        modelData = f"./ArchivedModels/{modelName}.json"
+        modelHistory = f"./ArchivedModels/{modelName}.csv"
+        if os.path.isfile(model) and os.path.isfile(modelData) and os.path.isfile(modelHistory):
+            os.rename(model, f"./ActiveModels/{modelName}.keras")
+            os.rename(modelData, f"./ModelDataHistory/{modelName}.json")
+            os.rename(modelHistory, f"./ModelDataHistory/{modelName}.csv")
+            print(f"Model {modelName} added successfully.")
+        else:
+            print(f"Model {modelName} not found in archived models.")
+            return None
+
+    def archiveModel(Self):#Disabled for testing purposes
+        modelName = input("Please enter the name of the model to archive: (type \'exit\' to exit)")
+        if modelName == "exit":
+            print("Exiting archive model.")
+            return None
+        model = f"./ActiveModels/{modelName}.keras"
+        modelData = f"./ModelDataHistory/{modelName}.json"
+        modelHistory = f"./ModelDataHistory/{modelName}.csv"
+        if os.path.isfile(model) and os.path.isfile(modelData) and os.path.isfile(modelHistory):
+            os.rename(model, f"./ArchivedModels/{modelName}.keras")
+            os.rename(modelData, f"./ArchivedModels/{modelName}.json")
+            os.rename(modelHistory, f"./ArchivedModels/{modelName}.csv")
+            print(f"Model {modelName} archived successfully.")
+        else:
+            print(f"Model {modelName} not found in active models.")
+            return None
+    
 
     def createNewModel(Self):
         modelName = input("Enter the name of the new model: ")
@@ -186,10 +221,11 @@ class MainStart:
                 print(f"Processing file: {file}")
                 df = pd.read_csv("./ModelDataHistory/" + file)
                 # Plot specific columns
-                plt.plot(df["<OPEN>"], df["<HIGH>"], label="Open vs High")
-                plt.xlabel("Open")
-                plt.ylabel("High")
-                plt.title("Plot from CSV")
+                x = df.index
+                plt.plot(x, df["<CLOSE>"], label="Open vs High")
+                plt.xlabel("Index")
+                plt.ylabel("Close Price")
+                plt.title(f"Preformance of Model {file}")
                 plt.legend()
                 plt.show()
         

@@ -71,7 +71,8 @@ def Main():
             cash -= sharesToBuy * curtTradeData[0]
             shares += sharesToBuy
         print("Current Trade Data: ", curtTradeData)
-        updateTradeData = np.append(curtTradeData, [cash, shares]).reshape(1, -1)
+        date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
+        updateTradeData = np.append(curtTradeData, [cash, shares, date]).reshape(1, -1)
         print(" Update Trade Data:", updateTradeData)  
         with open(f"./ModelDataHistory/{modelName}.csv", "a", newline="") as file:
             np.savetxt(
