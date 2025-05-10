@@ -5,6 +5,14 @@ import json
 import os
 import numpy as np
 import time
+import requests
+
+print("Loading TensorFlow Dependencies...")
+import tensorflow as tf #-- must be imported before pd to work
+from tensorflow import keras
+print("TensorFlow Keras loaded successfully!")
+import pandas as pd
+from io import StringIO
 
 simStatus = False #Simulation Status
 
@@ -31,6 +39,50 @@ def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
             return None
         else:
             print("Invalid file path. Please try again.")
+
+def convertTsToEpoch(df):#ChatGPT generated
+    df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df["timestamp"] = df["timestamp"].astype("int64") // 1_000_000_000
+
+import pandas as pd
+
+def normalizeAndUpdate(df: pd.DataFrame):
+    """
+    Normalize every numeric value in the DataFrame using min-max normalization.
+    The original DataFrame is updated with the normalized values.
+    
+    Returns:
+        - normalization_params (dict): Dictionary with column -> (min, max) for each column
+    """
+    normalization_params = {}
+
+    # Loop through all numeric columns and normalize them
+    for column in df.select_dtypes(include=["number"]).columns:
+        col_min = df[column].min()
+        col_max = df[column].max()
+        normalization_params[column] = (col_min, col_max)
+        # Normalize the column in place
+        df[column] = (df[column] - col_min) / (col_max - col_min)
+
+    return normalization_params
+
+def denormalize(df: pd.DataFrame, normalization_params: dict):
+    """
+    Reverse min-max normalization using stored min and max values.
+    
+    Parameters:
+        - df: The DataFrame with normalized values
+        - normalization_params: Dictionary with column -> (min, max) for each column
+    
+    Returns:
+        - denormalized_df (pd.DataFrame): The denormalized DataFrame
+    """
+    df = df.copy()
+
+    for column, (col_min, col_max) in normalization_params.items():
+        df[column] = df[column] * (col_max - col_min) + col_min
+    
+    return df
 
 def SelectModelArchitecture():#Exit Not working yete
      while True:
@@ -61,45 +113,64 @@ def loadTemplateData(templatePath):
     return data, xInputData, yInputData
 
 def tensorFlowModel(templatePath, modelName):
-    print("Loading TensorFlow Dependencies...")
-    import tensorflow as tf
-    from tensorflow import keras
-    print("TensorFlow Keras loaded successfully!")
-
     print("Template Path:", templatePath)
     config = None
     print("Loading template data...")
     with open(templatePath, 'r') as file:
         config = json.load(file)
-        print("PATH:", config["xInputPath"])
-        xInputData = np.loadtxt(f'{config["xInputPath"]}', delimiter=',', skiprows=1)#
-        yInputData = np.loadtxt(f'{config["yInputPath"]}', delimiter=',', skiprows=1)
-        dataHeader = np.loadtxt(f'{config["xInputPath"]}', delimiter=',', max_rows=1, dtype=str)
+    print("Template data loaded successfully!")
+    print("API Requesting...")
+    data = None
+    try: 
+        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={config['ticker']}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
+        r = requests.get(url)
+        data = pd.read_csv(StringIO(r.text))
+    except Exception as e:
+        print(f"Error in API Request: {e}")
+        return None, None
+    print("API Request Successful!")
+    #------------------------------------
+    print(data.head())
+    convertTsToEpoch(data)#--Converts timestamp string to epoch time
+    normalizationParams = normalizeAndUpdate(data)
+    print(data.head())
 
+    yInputData = data[:-1].copy()  # everything except the last row
+    xInputData = data[1:].copy()
+    dataHeader = data.columns.tolist()
+    
     finalActiveFunc = None if config["modelType"] == "regression" else 'softmax'
-
+    print("Creating Model...")
     model = keras.Sequential()
-    model.add(keras.layers.InputLayer(shape=xInputData[0].shape))  # Input layer expects data with shape `input_shape`
+    # ----------------------------------------------
+    model.add(keras.layers.InputLayer(shape=xInputData.iloc[0].shape))  # Input layer expects data with shape `input_shape`
     for i in range(len(config["architecture"])-1):
         model.add(keras.layers.Dense(config["architecture"][i], activation=config["activation"]))
-    model.add(keras.layers.Dense(config["numClasses"], activation=finalActiveFunc))
+    model.add(keras.layers.Dense(yInputData.shape[1], activation=finalActiveFunc))
     model.compile(optimizer=config["optimizer"], loss=config["lossFunction"], metrics=config["metrics"])
-    
+    # data["timestamp"] = pd.to_datetime(data["Date"])
+     #gives you the number of features (columns) in the dataset, which is what the Dense layer needs to know.
+
     print("Model Created")
     print("Fitting Model...")
-    dataset = tf.data.Dataset.from_tensor_slices((xInputData, yInputData))
+    xInputAsNumpy = xInputData.to_numpy()
+    yInputAsNumpy = yInputData.to_numpy()
+    dataset = tf.data.Dataset.from_tensor_slices((xInputAsNumpy, yInputAsNumpy))
+    # dataset = tf.data.Dataset.zip((xInputData.to_numpy(), yInputData.to_numpy()))#x and y are already pd.DataFrames so to use batchsize we need to zip them together
     dataset = dataset.batch(config["batchSize"]).prefetch(tf.data.AUTOTUNE)
     
     history = model.fit(dataset, epochs=config["epochs"],batch_size=config["batchSize"], verbose=0)
     print("Model Fitted")
 
     model.save(config["modelPath"] + modelName + ".keras")#Reshaped becuase by default it was populated with 1D data
+    modelData = np.append(yInputAsNumpy[len(yInputAsNumpy)-1], [100, 0]).reshape(1, -1)
+    print("Data Is", modelData)
     np.savetxt(
     f"./ModelDataHistory/{modelName}.csv",
-    np.append(yInputData[len(yInputData)-1], [100, 0]).reshape(1, -1),  # Append and reshape to a single row
+    modelData,  # Append and reshape to a single row
     delimiter=",",
     fmt="%d",
-    header=",".join(list(dataHeader) + ["Cash", "Shares"]),  # Convert header to a string and append new columns
+    header=",".join(list(dataHeader) + ["cash", "shares"]),  # Convert header to a string and append new columns
     comments="")
     print("modelSaved")
 
@@ -117,9 +188,6 @@ def tensorFlowModel(templatePath, modelName):
 
     print("Model MetaData Saved")
     return model, history
-
-    
-
     return model, config
 
     
