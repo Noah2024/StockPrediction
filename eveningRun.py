@@ -1,10 +1,14 @@
 import sys
 import os
 import glob
-import numpy as np
 import time
 import json
 from tensorflow.keras.models import load_model
+from normalization import *
+import numpy as np
+import requests 
+from io import StringIO
+import ast
 
 #!DO TO! Make Sure Trade data returns all 6 values needed DONE
 #2) Compare prediction with stock data make decision about trade
@@ -13,8 +17,14 @@ from tensorflow.keras.models import load_model
 #4) Set up Night Run to compare predictted with actual data
 #5) Add a function to get the current stock data from the API
 #6) Get an API to Trade stock and get information from the trade/HAve basic alternative
-def getCurtStockData():
-    return np.asarray([24.3,22.3,23.6,24.4,1000,0])[np.newaxis, : ]#Example Data#API's will be added later
+#7 Need to change normalize to accept a numpy array instead of a dataframe
+#8 Need to update morning and evening run to use the new normalize function
+
+def getCurtStockData(ticker):
+    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
+    r = requests.get(url)
+    data = pd.read_csv(StringIO(r.text))
+    return data[1:] #To get only the most recent ticker data
 
 def getTransactionHistory(modelName):#Copoilet improved
     file_path = f'./ModelDataHistory/{modelName}.csv'
@@ -42,7 +52,6 @@ def addTradeToQueue(modelName, Ticker, buySell, quantity, price, dateQue):
 
 def Main():
     models = glob.glob("./ActiveModels/*.keras")
-    #curtData = getCurtStockData() There is no current data cause the market has just opened
     loadedModels = {}
     for modelPath in models:
         modelName = os.path.basename(modelPath).split(".")[0]
@@ -55,12 +64,22 @@ def Main():
             modelMetaData = json.load(file)
         cash = modelMetaData["cash"]
         shares = modelMetaData["shares"]
+        normParams = ast.literal_eval(modelMetaData["normalParams"])
 
         #print("Cutrent Data: ", curtData)
-        curtTradeData = getTransactionHistory(modelName)
-        print("curtTradeData:", curtTradeData)
-        print("curtTradeData shape:", np.shape(curtTradeData))
-        prediction = model.predict(curtTradeData[np.newaxis, :])#Predict the stock data using the model
+        curtTradeData = getCurtStockData(modelMetaData["ticker"])#NOTE, THIS IS INEFFICENT, it transforms the entire dataset and not jus the last known row
+        curtTradeData = curtTradeData                           #But it won't let me get the last row without tranforming, so idk, efficency problem for later
+        convertTsToEpoch(curtTradeData)
+        normalizeAndUpdate(curtTradeData, normParams=normParams)
+        
+        # print("curtTradeData:", curtTradeData)
+        # print("curtTradeData shape:", np.shape(curtTradeData))
+        # print(curtTradeData.to_numpy())
+        dataToPredict = curtTradeData.to_numpy()[-1][np.newaxis, :]#Again, very innefficent, but whatever
+        prediction = model.predict(dataToPredict)#Predict the stock data using the model
+        print(prediction)
+        print(prediction.shape)
+        print(type(prediction))
         if (prediction[0][0] - curtTradeData[0])  < 0:
             print(f"{modelName} Predicts Stock will do Down, selling stock")
             cash += shares * curtTradeData[0]

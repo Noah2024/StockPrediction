@@ -1,2 +1,2 @@
-timestamp,open,high,low,close,volume,cash,shares
-0,0,0,0,0,0,100,0
+,timestamp,open,high,low,close,volume,Cash,Shares
+1,2025-05-08,255.0,256.52,253.25,254.14,3637012,100,0

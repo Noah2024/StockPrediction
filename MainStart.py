@@ -10,6 +10,7 @@ import requests
 print("Loading TensorFlow Dependencies...")
 import tensorflow as tf #-- must be imported before pd to work
 from tensorflow import keras
+from normalization import *
 print("TensorFlow Keras loaded successfully!")
 import pandas as pd
 from io import StringIO
@@ -40,49 +41,7 @@ def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
         else:
             print("Invalid file path. Please try again.")
 
-def convertTsToEpoch(df):#ChatGPT generated
-    df["timestamp"] = pd.to_datetime(df["timestamp"])
-    df["timestamp"] = df["timestamp"].astype("int64") // 1_000_000_000
-
 import pandas as pd
-
-def normalizeAndUpdate(df: pd.DataFrame):
-    """
-    Normalize every numeric value in the DataFrame using min-max normalization.
-    The original DataFrame is updated with the normalized values.
-    
-    Returns:
-        - normalization_params (dict): Dictionary with column -> (min, max) for each column
-    """
-    normalization_params = {}
-
-    # Loop through all numeric columns and normalize them
-    for column in df.select_dtypes(include=["number"]).columns:
-        col_min = df[column].min()
-        col_max = df[column].max()
-        normalization_params[column] = (col_min, col_max)
-        # Normalize the column in place
-        df[column] = (df[column] - col_min) / (col_max - col_min)
-
-    return normalization_params
-
-def denormalize(df: pd.DataFrame, normalization_params: dict):
-    """
-    Reverse min-max normalization using stored min and max values.
-    
-    Parameters:
-        - df: The DataFrame with normalized values
-        - normalization_params: Dictionary with column -> (min, max) for each column
-    
-    Returns:
-        - denormalized_df (pd.DataFrame): The denormalized DataFrame
-    """
-    df = df.copy()
-
-    for column, (col_min, col_max) in normalization_params.items():
-        df[column] = df[column] * (col_max - col_min) + col_min
-    
-    return df
 
 def SelectModelArchitecture():#Exit Not working yete
      while True:
@@ -131,6 +90,7 @@ def tensorFlowModel(templatePath, modelName):
     print("API Request Successful!")
     #------------------------------------
     print(data.head())
+    lastRow = data[1:]#--Get the last row of the data# Used for first entry in model history file
     convertTsToEpoch(data)#--Converts timestamp string to epoch time
     normalizationParams = normalizeAndUpdate(data)
     print(data.head())
@@ -162,16 +122,14 @@ def tensorFlowModel(templatePath, modelName):
     history = model.fit(dataset, epochs=config["epochs"],batch_size=config["batchSize"], verbose=0)
     print("Model Fitted")
 
-    model.save(config["modelPath"] + modelName + ".keras")#Reshaped becuase by default it was populated with 1D data
-    modelData = np.append(yInputAsNumpy[len(yInputAsNumpy)-1], [100, 0]).reshape(1, -1)
+    modelData = lastRow.head(1).copy()
+    modelData["Cash"] = 100
+    modelData["Shares"] = 0
+
+    model.save(config["modelPath"] + modelName + ".keras")
+    print(modelData)
     print("Data Is", modelData)
-    np.savetxt(
-    f"./ModelDataHistory/{modelName}.csv",
-    modelData,  # Append and reshape to a single row
-    delimiter=",",
-    fmt="%d",
-    header=",".join(list(dataHeader) + ["cash", "shares"]),  # Convert header to a string and append new columns
-    comments="")
+    modelData.to_csv(f".\ModelDataHistory\{modelName}.csv")
     print("modelSaved")
 
     print("Saving Model MetaData")
@@ -180,6 +138,7 @@ def tensorFlowModel(templatePath, modelName):
         "ticker": config["ticker"],
         "cash": 100,
         "shares": 0,
+        "normalParams": str(normalizationParams),
         "lastUpdated": time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()),
     }
     
