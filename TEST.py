@@ -19,3 +19,5 @@ print("----------")
 print(Y.head())
 # print(X.head())
 # print(y.head())
+
+print(data)

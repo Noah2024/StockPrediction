@@ -23,6 +23,8 @@ import ast
 def getCurtStockData(ticker):
     url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
     r = requests.get(url)
+    print(r)
+    print(type(r))
     data = pd.read_csv(StringIO(r.text))
     return data[1:] #To get only the most recent ticker data
 
@@ -68,6 +70,7 @@ def Main():
 
         #print("Cutrent Data: ", curtData)
         curtTradeData = getCurtStockData(modelMetaData["ticker"])#NOTE, THIS IS INEFFICENT, it transforms the entire dataset and not jus the last known row
+        lastKnownDatapoint = curtTradeData.iloc[-1]
         curtTradeData = curtTradeData                           #But it won't let me get the last row without tranforming, so idk, efficency problem for later
         convertTsToEpoch(curtTradeData)
         normalizeAndUpdate(curtTradeData, normParams=normParams)
@@ -75,44 +78,48 @@ def Main():
         # print("curtTradeData:", curtTradeData)
         # print("curtTradeData shape:", np.shape(curtTradeData))
         # print(curtTradeData.to_numpy())
+        print("-----")
         dataToPredict = curtTradeData.to_numpy()[-1][np.newaxis, :]#Again, very innefficent, but whatever
         prediction = model.predict(dataToPredict)#Predict the stock data using the model
-        print(prediction)
-        print(prediction.shape)
-        print(type(prediction))
-        if (prediction[0][0] - curtTradeData[0])  < 0:
+        predictedClose = denormalizeNp(prediction, normParams)[0][4]
+        print(predictedClose)
+        print(lastKnownDatapoint)
+        print(curtTradeData)
+
+        if (predictedClose - lastKnownDatapoint["close"])  < 0:
             print(f"{modelName} Predicts Stock will do Down, selling stock")
-            cash += shares * curtTradeData[0]
+            cash += shares * curtTradeData.iloc[-1]["open"]
             shares = 0
         else:
             print(f"{modelName} Predicts Stock will do Up, buying stock")
-            sharesToBuy = cash % curtTradeData[0]#Get the current ammount of stock to buy
-            cash -= sharesToBuy * curtTradeData[0]
+            sharesToBuy = cash % lastKnownDatapoint["open"]#Get the current ammount of stock to buy
+            cash -= sharesToBuy * lastKnownDatapoint["open"]
             shares += sharesToBuy
+
         print("Current Trade Data: ", curtTradeData)
         date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        updateTradeData = np.append(curtTradeData, [cash, shares, date]).reshape(1, -1)
+        updateTradeData = np.append(lastKnownDatapoint, [cash, shares, date]).reshape(1, -1)
         print(" Update Trade Data:", updateTradeData)  
         with open(f"./ModelDataHistory/{modelName}.csv", "a", newline="") as file:
             np.savetxt(
                 file,
                 updateTradeData,
                 delimiter=",",
-                fmt="%d",
+                fmt="%s",
             )
         print(f"Cash: {cash}, Shares: {shares}")#Debugged with copoilet
         print("modelName type:", type(modelName))
         print("ticker type:", type(modelMetaData["ticker"]))
         print("buySell type:", type("Buy" if shares > 0 else "Sell"))
         print("shares type:", type(shares))
-        print("curtTradeData[0] type:", type(curtTradeData[0]))
+        print("curtTradeData[0] type:", type(lastKnownDatapoint["open"]))
         print("dateQue type:", type(time.strftime("%Y-%m-%d %H:%M:%S")))
         addTradeToQueue(
             str(modelName),  # Ensure modelName is a string
             str(modelMetaData["ticker"]),  # Ensure ticker is a string
             "Buy" if shares > 0 else "Sell",  # This is already a string
             str(shares),  # Convert shares to a string
-            str(curtTradeData[0]),  # Ensure curtTradeData[0] is a string
+            str(lastKnownDatapoint["open"]),  # Ensure curtTradeData[0] is a string
             str(time.strftime("%Y-%m-%d %H:%M:%S"))  # This is already a string
         )
 
