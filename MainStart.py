@@ -5,7 +5,10 @@ import json
 import os
 import numpy as np
 import time
-import requests
+import os
+import subprocess
+import platform
+
 
 from crontab import CronTab
 
@@ -17,6 +20,26 @@ from api import *
 print("TensorFlow Keras loaded successfully!")
 
 simStatus = False #Simulation Status
+
+def is_windows():#Chatgpt
+    return platform.system().lower().startswith("win")
+
+def setJsonValue(path, key, value):#ChatGpt
+    with open(path, "r") as f:
+        data = json.load(f)
+    data[key] = value
+    with open(path, "w") as f:
+        json.dump(data, f, indent=4)
+
+def getJsonValue(path, key=None, default=None):#ChatGpt
+    try:
+        with open(path, "r") as f:
+            data = json.load(f)
+        return data[key] if key else data
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default if key else {}
+    except KeyError:
+        return default
 
 def yesNoInput(prompt):
     while True:
@@ -156,18 +179,20 @@ class MainStart:
         self.current_model = None  # Currently selected model
 
     def mainMenu(self):
+        simStatus  = getJsonValue("./Data/systemMetaData.json", "status")
+
         while True:
             print("-----------------------")
             print("Main Menu:")
-            print(f"Simulation Status: {'Running' if simStatus else 'Not Running'}")
+            print(f"Simulation Status: {simStatus}")
             print("-----------------------")
             print("1. Create New Model")
             print("2. Add Model To Simulation")
             print("3. Archive Model")
             print("4. Start Simulation")
-            print("6. End Simulation")
-            print("7. Check Current Results")
-            print("8. Exit")
+            print("5. End Simulation")
+            print("6. Check Current Results")
+            print("7. Exit")
 
             choice = input("Enter your choice: ")
 
@@ -178,14 +203,12 @@ class MainStart:
             elif choice == '3':
                 self.archiveModel()
             elif choice == '4':
-                self.run_simulation()
+                self.startSimulation()
             elif choice == '5':
-                self.check_results()
+                self.stopSimulation()
             elif choice == '6':
-                self.check_results()
-            elif choice == '7':
                 self.checkResults()
-            elif choice == '8':
+            elif choice == '7':
                 break
             else:
                 print("Invalid choice, please try again.")
@@ -257,18 +280,40 @@ class MainStart:
         
 
     
-    def startSimulation(self):
-        # Create a cron object for the current user
-        cron = CronTab(user=True)
+    def startSimulation(self):#chatGpt
+        morning_path = os.path.abspath('./morningRun.py')
+        evening_path = os.path.abspath('./eveningRun.py')
 
-        # Add a new job
-        job = cron.new(command='python3 /path/to/your_script.py', comment='my_automatic_task')
+        if is_windows():
+            # Windows Task Scheduler
+            subprocess.run(f'schtasks /Create /SC DAILY /D MON,TUE,WED,THU,FRI /TN "stockPredictMorningRun" /TR "python {morning_path}" /ST 09:35 /F', shell=True)
+            subprocess.run(f'schtasks /Create /SC DAILY /D MON,TUE,WED,THU,FRI /TN "stockPredictEveningRun" /TR "python {evening_path}" /ST 15:55 /F', shell=True)
+        else:
+            # Linux/macOS with cron
+            cron = CronTab(user=True)
+            job = cron.new(command=f'python3 {morning_path}', comment='stockPredictMorningRun')
+            job2 = cron.new(command=f'python3 {evening_path}', comment='stockPredictEveningRun')
+            job.setall(35, 9, '*', '*', '1-5')
+            job2.setall(55, 15, '*', '*', '1-5')
+            cron.write()
+        setJsonValue("./Data/systemMetaData.json", {"simStatus": "online"})
 
-        # Set schedule (daily at 7 AM)
-        job.setall('0 7 * * *')
 
-        # Write the job to the crontab
-        cron.write()
+
+    def stopSimulation(self):#ChatGpt
+
+        if is_windows():
+            subprocess.run('schtasks /Delete /TN "stockPredictMorningRun" /F', shell=True)
+            subprocess.run('schtasks /Delete /TN "stockPredictEveningRun" /F', shell=True)
+        else:
+            cron = CronTab(user=True)
+            for job in cron:
+                if job.comment in ['stockPredictMorningRun', 'stockPredictEveningRun']:
+                    cron.remove(job)
+            cron.write()
+        setJsonValue("./Data/systemMetaData.json", {"simStatus": "offline"})
+
+
 
 MainMenu = MainStart()
 MainMenu.mainMenu()
