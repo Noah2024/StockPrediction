@@ -7,13 +7,14 @@ import numpy as np
 import time
 import requests
 
+from crontab import CronTab
+
 print("Loading TensorFlow Dependencies...")
 import tensorflow as tf #-- must be imported before pd to work
 from tensorflow import keras
 from normalization import *
+from api import *
 print("TensorFlow Keras loaded successfully!")
-import pandas as pd
-from io import StringIO
 
 simStatus = False #Simulation Status
 
@@ -81,9 +82,7 @@ def tensorFlowModel(templatePath, modelName):
     print("API Requesting...")
     data = None
     try: 
-        url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={config['ticker']}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
-        r = requests.get(url)
-        data = pd.read_csv(StringIO(r.text), index_col=None)
+        data = getCompactDailyStock(config["ticker"])
     except Exception as e:
         print(f"Error in API Request: {e}")
         return None, None
@@ -259,15 +258,17 @@ class MainStart:
 
     
     def startSimulation(self):
-        # Placeholder for starting a simulation
-        if not self.models:
-            print("No models available to run a simulation.")
-            return
-        print("Starting simulation with the following models:")
-        for model in self.models:
-            print(f"- {model}")
-        # Simulate running the models (placeholder)
-        print("Simulation started...")
+        # Create a cron object for the current user
+        cron = CronTab(user=True)
+
+        # Add a new job
+        job = cron.new(command='python3 /path/to/your_script.py', comment='my_automatic_task')
+
+        # Set schedule (daily at 7 AM)
+        job.setall('0 7 * * *')
+
+        # Write the job to the crontab
+        cron.write()
 
 MainMenu = MainStart()
 MainMenu.mainMenu()

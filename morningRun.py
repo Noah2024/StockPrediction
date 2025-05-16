@@ -1,23 +1,21 @@
 import glob
 import csv
 import time
+import json
+from api import *
 
 def makeTrade(tradeData):
     # Placeholder for using API to make trade
     return True
 
 def Main():
-    print("test")
+    print("Running Main of Morning Run")
     skippedHeader = None
     executedTrades = []
     # Load and execute the trades qued from last night
     with open(f"./Data/tradeQue.csv", "r") as file:
-        print("test2")
         reader = csv.reader(file)
         skippedHeader = next(reader)
-        print(skippedHeader)
-        print("test3")
-        print(reader)
         for row in reader:
             print("ROW", row)
             if makeTrade(row):
@@ -41,4 +39,7 @@ def Main():
     # Placeholder for using API to make trade
 
 if __name__ == "__main__":
-    Main()
+    if isMarketOpen() == "open":
+        Main()
+    else:
+        print("Market is not open at ", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))

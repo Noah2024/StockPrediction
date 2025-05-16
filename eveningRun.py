@@ -9,7 +9,8 @@ import numpy as np
 import requests 
 from io import StringIO
 import ast
-
+from api import *
+#Comment
 #!DO TO! Make Sure Trade data returns all 6 values needed DONE
 #2) Compare prediction with stock data make decision about trade
 #3) Add new trade to transaction history
@@ -53,6 +54,7 @@ def addTradeToQueue(modelName, Ticker, buySell, quantity, price, dateQue):
         )
 
 def Main():
+    print("Running Main of eveningRun.py")
     models = glob.glob("./ActiveModels/*.keras")
     loadedModels = {}
     for modelPath in models:
@@ -129,4 +131,8 @@ def Main():
 
 
 if __name__ == "__main__":
+    if isMarketOpen() == "open":
+        Main()
+    else:
+        print("Market is not open at ", time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()))
     Main()

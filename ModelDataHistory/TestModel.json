@@ -1,8 +1,0 @@
-{
-    "modelName": "testModel",
-    "ticker": "IBM",
-    "cash": 100,
-    "shares": 0,
-    "normalParams": "{'timestamp': (1734566400, 1747267200), 'open': (217.12, 265.71), 'high': (218.125, 267.43), 'low': (214.5, 262.15), 'close': (217.4, 266.68), 'volume': (1186216, 15428144)}",
-    "lastUpdated": "2025-05-16 13:23:19"
-}
