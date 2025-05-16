@@ -83,7 +83,7 @@ def tensorFlowModel(templatePath, modelName):
     try: 
         url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={config['ticker']}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
         r = requests.get(url)
-        data = pd.read_csv(StringIO(r.text))
+        data = pd.read_csv(StringIO(r.text), index_col=None)
     except Exception as e:
         print(f"Error in API Request: {e}")
         return None, None
@@ -129,7 +129,7 @@ def tensorFlowModel(templatePath, modelName):
     model.save(config["modelPath"] + modelName + ".keras")
     print(modelData)
     print("Data Is", modelData)
-    modelData.to_csv(f".\ModelDataHistory\{modelName}.csv")
+    modelData.to_csv(f".\ModelDataHistory\{modelName}.csv", index = False)
     print("modelSaved")
 
     print("Saving Model MetaData")
@@ -233,8 +233,7 @@ class MainStart:
         if default:
             print("Loading default model template...")
             model, config = tensorFlowModel("ModelTemplates/default.json", modelName)
-            
-            breakpoint()
+            #breakpoint()
         else:
            print("Enter the path to an alternative .json model template:")
            selectFile()

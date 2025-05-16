@@ -98,7 +98,7 @@ def Main():
 
         print("Current Trade Data: ", curtTradeData)
         date = time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
-        updateTradeData = np.append(lastKnownDatapoint, [cash, shares, date]).reshape(1, -1)
+        updateTradeData = np.append(lastKnownDatapoint, [cash, shares]).reshape(1, -1)
         print(" Update Trade Data:", updateTradeData)  
         with open(f"./ModelDataHistory/{modelName}.csv", "a", newline="") as file:
             np.savetxt(
