@@ -1,0 +1,8 @@
+{
+    "modelName": "changedArch",
+    "ticker": "IBM",
+    "cash": 100,
+    "shares": 0,
+    "normalParams": "{'timestamp': (1734912000, 1747612800), 'open': (217.12, 266.35), 'high': (218.125, 269.135), 'low': (214.5, 265.08), 'close': (217.4, 268.41), 'volume': (1186216, 15428144)}",
+    "lastUpdated": "2025-05-20 14:11:39"
+}

@@ -20,3 +20,10 @@ def getCompactDailyStock(ticker):
     r = requests.get(url)
     data = pd.read_csv(StringIO(r.text), index_col=None)
     return data
+
+def getLastKnownData(ticker):
+    url = f'https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv'
+    r = requests.get(url)
+    data = pd.read_csv(StringIO(r.text))
+    print("Last Known Data", data)
+    return data #To get only the most recent ticker data

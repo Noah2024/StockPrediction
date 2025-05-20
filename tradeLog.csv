@@ -1,1 +1,3 @@
 <Model>, <Ticker>, <Buy/Sell>, <Quantity>, <Price>, <DateQue>, <DateActual>
+testModel1,IBM,Sell,0,222.73,2025-05-18 21:43:03,2025-05-19 12:35:34
+testModel2,IBM,Sell,0,222.73,2025-05-18 21:43:03,2025-05-19 12:35:34

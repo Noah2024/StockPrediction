@@ -21,14 +21,6 @@ from api import *
 #7 Need to change normalize to accept a numpy array instead of a dataframe
 #8 Need to update morning and evening run to use the new normalize function
 
-def getCurtStockData(ticker):
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
-    r = requests.get(url)
-    print(r)
-    print(type(r))
-    data = pd.read_csv(StringIO(r.text))
-    return data[1:] #To get only the most recent ticker data
-
 def getTransactionHistory(modelName):#Copoilet improved
     file_path = f'./ModelDataHistory/{modelName}.csv'
     # Load the entire CSV file, skipping the header
@@ -71,7 +63,7 @@ def Main():
         normParams = ast.literal_eval(modelMetaData["normalParams"])
 
         #print("Cutrent Data: ", curtData)
-        curtTradeData = getCurtStockData(modelMetaData["ticker"])#NOTE, THIS IS INEFFICENT, it transforms the entire dataset and not jus the last known row
+        curtTradeData = getLastKnownData(modelMetaData["ticker"])#NOTE, THIS IS INEFFICENT, it transforms the entire dataset and not jus the last known row
         lastKnownDatapoint = curtTradeData.iloc[-1]
         curtTradeData = curtTradeData                           #But it won't let me get the last row without tranforming, so idk, efficency problem for later
         convertTsToEpoch(curtTradeData)

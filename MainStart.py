@@ -35,6 +35,7 @@ def getJsonValue(path, key=None, default=None):#ChatGpt
     try:
         with open(path, "r") as f:
             data = json.load(f)
+            print("DATA AS", data)
         return data[key] if key else data
     except (FileNotFoundError, json.JSONDecodeError):
         return default if key else {}
@@ -53,7 +54,6 @@ def yesNoInput(prompt):
 
 def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
     current_file_path = os.path.abspath(__file__)
-    return current_file_path
     while True:
         filePath = input("Please enter the full path to the file: (type \'exit\' to exit)")
         if os.path.isfile(filePath):
@@ -179,9 +179,8 @@ class MainStart:
         self.current_model = None  # Currently selected model
 
     def mainMenu(self):
-        simStatus  = getJsonValue("./Data/systemMetaData.json", "status")
-
         while True:
+            simStatus  = getJsonValue("./Data/systemMetaData.json", "status")
             print("-----------------------")
             print("Main Menu:")
             print(f"Simulation Status: {simStatus}")
@@ -192,7 +191,8 @@ class MainStart:
             print("4. Start Simulation")
             print("5. End Simulation")
             print("6. Check Current Results")
-            print("7. Exit")
+            print("7. Single Predict Model")
+            print("8. Exit")
 
             choice = input("Enter your choice: ")
 
@@ -208,10 +208,60 @@ class MainStart:
                 self.stopSimulation()
             elif choice == '6':
                 self.checkResults()
-            elif choice == '7':
+            elif choice == "7":
+                self.singlePredict()
+            elif choice == '8':
                 break
             else:
                 print("Invalid choice, please try again.")
+    def singlePredict(Self):
+        import ast
+        from api import getLastKnownData 
+        print("Enter the name of the path to the model you wish to predict")
+        modelPath = selectFile()
+        if not modelPath:
+            print("No model selected.")
+            return
+        model = keras.models.load_model(modelPath)
+        modelName = os.path.basename(modelPath)
+        modelNoExtension = os.path.splitext(modelName)[0]
+        modelMetaDataPath = f"./ModelDataHistory/{modelNoExtension}.json"
+
+        if os.path.isfile(modelMetaDataPath):
+            pass
+        else:
+            print("path to file does not exist - Exiting \"Single Predict\" ")
+            return
+
+        with open(modelMetaDataPath, "r") as file:
+            modelMetaData = json.load(file)
+
+        cash = modelMetaData["cash"]
+        shares = modelMetaData["shares"]
+        normParams = ast.literal_eval(modelMetaData["normalParams"])
+        
+        curtTradeData = getLastKnownData(modelMetaData["ticker"])#NOTE, THIS IS INEFFICENT, it transforms the entire dataset and not jus the last known row
+        lastKnownDatapoint = curtTradeData
+        curtTradeData["timestamp"] = int(time.time())
+        # print(curtTradeData)
+        convertTsToEpoch(curtTradeData)
+        normalizeAndUpdate(curtTradeData, normParams=normParams)
+        curtTradeData = curtTradeData.drop(labels=["latestDay","previousClose","change", "changePercent", "symbol"], axis=1)
+        dataToPredict = curtTradeData.to_numpy()[-1][np.newaxis, :]#Again, very innefficent, but whatever
+        print(dataToPredict)
+        prediction = model.predict(dataToPredict)#Predict the stock data using the model
+        predictedClose = denormalizeNp(prediction, normParams)[0][4]
+        print("Predicted Close for next day", predictedClose)
+        print("Most Recent Trade Price", lastKnownDatapoint["open"], "Very off cause not normalized")
+        if (predictedClose - lastKnownDatapoint["open"])  < 0:
+            print(f"{modelName} Predicts Stock will do Down, selling stock")
+            cash += shares * curtTradeData.iloc[-1]["open"]
+            shares = 0
+        else:
+            print(f"{modelName} Predicts Stock will do Up, buying stock")
+            sharesToBuy = cash % lastKnownDatapoint["open"]#Get the current ammount of stock to buy
+            cash -= sharesToBuy * lastKnownDatapoint["open"]
+            shares += sharesToBuy
     
     def addFromArchive(Self):
         modelName = input("Please enter the name of the model to add: (type \'exit\' to exit)")
@@ -269,8 +319,12 @@ class MainStart:
                 print(f"Processing file: {file}")
                 df = pd.read_csv("./ModelDataHistory/" + file)
                 # Plot specific columns
-                x = df.index
-                plt.plot(x, df["<CLOSE>"], label="Open vs High")
+                equity = (df["close"] * df["Shares"])
+                print("---")
+                print(df["Cash"])
+                print("---")
+                print(equity)
+                plt.plot(df["timestamp"], equity, label="Open vs High")
                 plt.xlabel("Index")
                 plt.ylabel("Close Price")
                 plt.title(f"Preformance of Model {file}")
@@ -286,8 +340,8 @@ class MainStart:
 
         if is_windows():
             # Windows Task Scheduler
-            subprocess.run(f'schtasks /Create /SC DAILY /D MON,TUE,WED,THU,FRI /TN "stockPredictMorningRun" /TR "python {morning_path}" /ST 09:35 /F', shell=True)
-            subprocess.run(f'schtasks /Create /SC DAILY /D MON,TUE,WED,THU,FRI /TN "stockPredictEveningRun" /TR "python {evening_path}" /ST 15:55 /F', shell=True)
+            subprocess.run(f'schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "stockPredictMorningRun" /TR "python {morning_path}" /ST 09:35 /F', shell=True)
+            subprocess.run(f'schtasks /Create /SC WEEKLY /D MON,TUE,WED,THU,FRI /TN "stockPredictEveningRun" /TR "python {evening_path}" /ST 15:55 /F', shell=True)
         else:
             # Linux/macOS with cron
             cron = CronTab(user=True)
@@ -296,7 +350,7 @@ class MainStart:
             job.setall(35, 9, '*', '*', '1-5')
             job2.setall(55, 15, '*', '*', '1-5')
             cron.write()
-        setJsonValue("./Data/systemMetaData.json", {"simStatus": "online"})
+        setJsonValue("./Data/systemMetaData.json", "status", "online")
 
 
 
@@ -311,7 +365,7 @@ class MainStart:
                 if job.comment in ['stockPredictMorningRun', 'stockPredictEveningRun']:
                     cron.remove(job)
             cron.write()
-        setJsonValue("./Data/systemMetaData.json", {"simStatus": "offline"})
+        setJsonValue("./Data/systemMetaData.json", "status", "offline")
 
 
 
