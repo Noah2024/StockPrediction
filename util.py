@@ -16,7 +16,7 @@ def getJsonValue(path, key=None, default=None):#ChatGpt
     try:
         with open(path, "r") as f:
             data = json.load(f)
-            print("DATA AS", data)
+            # print("DATA AS", data)
         return data[key] if key else data
     except (FileNotFoundError, json.JSONDecodeError):
         return default if key else {}

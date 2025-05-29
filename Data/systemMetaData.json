@@ -1,3 +1,12 @@
 {
-    "status": "offline"
+    "status": "offline",
+    "alphaVanLimit": "25 - 1440",
+    "alphaVanLastCall": "2025-05-29 12:41:59.723656",
+    "alphaVanCurt": 0,
+    "finnhubLimit": "60 - 1",
+    "finnhubLastCall": "2025-05-29 12:53:46.133604",
+    "finnhubCurt": 1,
+    "polygonLimit": "5 - 1",
+    "polygonLastCall": "2025-05-29 12:41:59.723656",
+    "polygonCurt": 0
 }

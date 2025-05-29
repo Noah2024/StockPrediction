@@ -79,7 +79,6 @@ def tensorFlowModel(templatePath, modelName):
 
     print("Model MetaData Saved")
     return model, history
-    return model, config
 
 def singlePredict():
         import ast
