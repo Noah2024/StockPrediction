@@ -1,0 +1,15 @@
+{
+    "values": [
+        "IndicatorValue(timestamp=1748491200000, value=205.6880000000001)",
+        "IndicatorValue(timestamp=1748404800000, value=205.9428000000001)",
+        "IndicatorValue(timestamp=1748318400000, value=206.2144000000001)",
+        "IndicatorValue(timestamp=1747972800000, value=206.4800000000001)",
+        "IndicatorValue(timestamp=1747886400000, value=206.7682000000001)",
+        "IndicatorValue(timestamp=1747800000000, value=207.0806000000001)",
+        "IndicatorValue(timestamp=1747713600000, value=207.4556000000001)",
+        "IndicatorValue(timestamp=1747627200000, value=207.86800000000005)",
+        "IndicatorValue(timestamp=1747368000000, value=208.47380000000004)",
+        "IndicatorValue(timestamp=1747281600000, value=208.95520000000005)"
+    ],
+    "underlying": "IndicatorUnderlying(url='https://api.polygon.io/v2/aggs/ticker/AAPL/range/1/day/1063281600000/1748645354157?limit=235&sort=desc', aggregates=[])"
+}

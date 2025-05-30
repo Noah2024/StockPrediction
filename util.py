@@ -46,6 +46,7 @@ def selectFile(): #Yoinked from chatGPT#Disabled for testing purposes
         else:
             print("Invalid file path. Please try again.")
 
+
 # def loadTemplateData(templatePath):
 #     dataHeader = None
 
