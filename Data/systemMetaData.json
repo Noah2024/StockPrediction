@@ -1,13 +1,13 @@
 {
     "status": "offline",
     "alphaVanLimit": "25 - 1440",
-    "alphaVanLastCall": "2025-05-29 12:41:59.723656",
-    "alphaVanCurt": 0,
+    "alphaVanLastCall": "2025-05-31 13:04:02.052247",
+    "alphaVanCurt": 20,
     "finnhubLimit": "60 - 1",
-    "finnhubLastCall": "2025-05-29 12:58:45.299736",
-    "finnhubCurt": 1,
+    "finnhubLastCall": "2025-05-31 13:20:59.709412",
+    "finnhubCurt": 4,
     "polygonLimit": "5 - 1",
-    "polygonLastCall": "2025-05-30 18:45:56.272949",
+    "polygonLastCall": "2025-05-30 14:27:42.845442",
     "polygonCurt": 1,
-    "cacheLastUpdated": "20250530184556"
+    "cacheLastUpdated": "20250531130402"
 }

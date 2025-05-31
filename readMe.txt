@@ -8,3 +8,4 @@ This is becuase they should only run if the markets were open that day, and I ca
 
 In the systemMetaData the limit for API calls are represented as "alphaVanLimit": "25 - 1440", the first number being the
 Total number of API calls that can be made, and the number after is how many MINUTES it takes for that number to reset
+

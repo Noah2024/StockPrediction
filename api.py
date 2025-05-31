@@ -2,7 +2,7 @@ import requests
 import pandas as pd
 from io import StringIO
 from datetime import datetime, timedelta
-from util import getJsonValue, setJsonValue, checkCache
+from util import getJsonValue, setJsonValue#, checkCache
 from polygon import RESTClient
 import json 
 
@@ -26,10 +26,10 @@ def checkLoadCache(cachePath):
         with open(f"./tempDataCache/{cacheName}.{extension}", "r") as f:
             return json.load(f) if extension == "json" else pd.read_csv(f"./tempDataCache/{cacheName}.{extension}")
     except FileNotFoundError:
-        return False
+        return None
     except json.JSONDecodeError:
         print(f"Cache file {cacheName}.json is corrupted or empty.")
-        return False
+        return None
     
 def saveCache(cachePath, data):
     """
@@ -37,14 +37,14 @@ def saveCache(cachePath, data):
     The data can be a dictionary (for JSON) or a DataFrame (for CSV).
     """
     cacheName, extension = cachePath.rsplit(".", 1)
-    # print("PATH DECONSTRUCTED:", pathDeconstrct)
+    # print("TYPE OF DATA:", data)
     # print("EXTENSION IN SAVE CACHE:", extension)
     try:
         if extension == "json":
-            with open(f"./tempDataCache/{cacheName}.json", "w") as f:
+            with open(f"./tempDataCache/{cacheName}.json", "w") as f:###########Issue somehwere here
                 json.dump(data, f, indent=4, default=str)  # Use default=str to handle non-serializable types
         elif extension == "csv":
-            pd.read_csv(f"./tempDataCache/{cacheName}.csv", index=False)  # Ensure data is a DataFrame
+            data.to_csv(f"./tempDataCache/{cacheName}.csv", index=None)  # Ensure data is a DataFrame
         else:
             raise ValueError("Unsupported file extension. Use 'json' or 'csv'.")
         print(f"Cache saved successfully to {cacheName}.{extension}")
@@ -68,39 +68,56 @@ def apiDecoratorFactory(apiservice, cachePath=None):#Copoilet Gen - I understand
     def apiDecorator(func):#Copoilet Gen
         def wrapper(*args, **kwargs):
             # print("Name of API service:", apiservice)
-            cacheName, extension = cachePath.rsplit(".", 1)
-            ticker = args[0]
             # print("Path IN decorator:", cachePath)
             # print("Cache Name:", cacheName)
             # print("Extension:", extension)
+            ticker = None
+            cacheName = None
             if cachePath != None: #If caccheName is provided,
+                cacheName, extension = cachePath.rsplit(".", 1)
+                ticker = args[0]
                 cache =  checkLoadCache(f"{ticker}-{cachePath}")
                 
-                if cache == False:
-                    print(f"Cache for {cachePath} does not exist or is empty. Fetching data from API...")
-                else:
-                    print(f"Cache for {cachePath} exists and is not empty. Checking age of cache.")
-                    cacheLastUpdated = getJsonValue("./Data/systemMetaData.json", "cacheLastUpdated")#cacheName.split("-")[2]#Get the last time the cache was updated
+                if cache is not None:
+                    print(f"Cache for {cachePath} exists. Checking age of cache.")
+                    cacheLastUpdated = getJsonValue("./Data/systemMetaData.json", "cacheLastUpdated")
                     print("Cache Last Updated:", cacheLastUpdated)
                     if datetime.now() - datetime.strptime(cacheLastUpdated, "%Y%m%d%H%M%S") > timedelta(days=1):
                         print("Cache is older than 1 day. Fetching new data from API...")
+                        # Proceed to fetch new data
                     else:
                         print("Cache is less than 1 day old. Using cached data.")
                         return cache
+                else:
+                    print(f"Cache for {cachePath} does not exist or is empty. Fetching data from API...")
+                    # Proceed to fetch new data
 
             if not confirmApiCall(apiservice):
                 print(f"API call to {apiservice} is not allowed at this time.")
                 return None
-            funcOutput = func(*args, **kwargs)
-            setJsonValue("./Data/systemMetaData.json", f"{apiservice}LastCall", str(datetime.now()))#Update the last call time
-            setJsonValue("./Data/systemMetaData.json", f"{apiservice}Curt", int(getJsonValue("./Data/systemMetaData.json", f"{apiservice}Curt")) + 1)#Increment the current count for this API service
-            if cacheName != None: #args[0] shold be the the ticker symbol
+            try:
+                funcOutput = func(*args, **kwargs)
+                setJsonValue("./Data/systemMetaData.json", f"{apiservice}LastCall", str(datetime.now()))#Update the last call time
+                setJsonValue("./Data/systemMetaData.json", f"{apiservice}Curt", int(getJsonValue("./Data/systemMetaData.json", f"{apiservice}Curt")) + 1)#Increment the current count for this API service
+            except Exception as ex:
+                print(f"Error in API call to {apiservice} for ticker {ticker}: {ex}")
+                return None
+           
+            if cacheName is not None: #args[0] shold be the the ticker symbol
                 newCacheName = f"{args[0]}-{cacheName}"#Create a new cache name with the ticker symbol #-{datetime.now().strftime('%Y%m%d%H%M%S')}
-                print("New Cache Name:", newCacheName)
+                # print("New Cache Name:", newCacheName)
                 saveCache(f"{newCacheName}.{extension}", funcOutput)
                 setJsonValue("./Data/systemMetaData.json", "cacheLastUpdated", datetime.now().strftime("%Y%m%d%H%M%S"))#Update the last updated time of the cache
             
             return funcOutput
+        return wrapper
+    return apiDecorator
+
+def minApiDecoratorFactory(apiservice, cachePath=None):
+    def apiDecorator(func):
+        def wrapper(*args, **kwargs):
+            print("Decorator called with", args, kwargs)
+            return func(*args, **kwargs)
         return wrapper
     return apiDecorator
 
@@ -125,12 +142,13 @@ def confirmApiCall(apiservice):#alphaVan, finnhub, and polygon
     
     return True
     
-@apiDecoratorFactory("finnhub", "status")
+@apiDecoratorFactory("finnhub")
 def isMarketOpen():
     status = finnhubClient.market_status(exchange='US')["isOpen"]
     rtn = "closed" if status == False else "open"
     return rtn
 
+@apiDecoratorFactory("alphaVan", "allHistoricData.csv")
 def getAllHistoric(ticker):
     """
         Gets all historic data for a given ticker from Alpha Vantage.
@@ -141,11 +159,13 @@ def getAllHistoric(ticker):
         
         Note: This function fetches daily data for the ticker, not intraday.
     """
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=compact"
+    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=full"
     r = requests.get(url)
     data = pd.read_csv(StringIO(r.text), index_col=None)
+    # print(data.head())
     return data
 
+@apiDecoratorFactory("finnhub", "quote.json")
 def getLastKnownData(ticker):
     """
         Gets the last known data for a given ticker from Finnhub.
@@ -187,11 +207,13 @@ def getSMA(ticker, timespan="day", adjusted="true", window="50", series_type="cl
         series_type="close",
         order="desc",
     )
-    
+
     if hasattr(sma, "to_dict"):
         serializable = sma.to_dict()
     else:
         serializable = sma.__dict__
 
     return serializable
+
+
 
