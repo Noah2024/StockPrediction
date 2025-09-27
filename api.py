@@ -5,11 +5,16 @@ from datetime import datetime, timedelta
 from util import getJsonValue, setJsonValue#, checkCache
 from polygon import RESTClient
 import json 
+from dotenv import load_dotenv
+import os
 
-
+load_dotenv()
+finhubAPIKey = os.getenv("finhubAPIKey")
+alphaVantageAPIKey = os.getenv("alphaVantageAPIKey")
+polygonAPIKey = os.getenv("polygonAPIKey")
 try:
     import finnhub
-    finnhubClient = finnhub.Client(api_key="d0pnqbhr01qgccua9u2gd0pnqbhr01qgccua9u30")
+    finnhubClient = finnhub.Client(api_key=finhubAPIKey)
 except Exception as ex:
     print("Finnhub client not available")
     print(ex)
@@ -44,6 +49,7 @@ def saveCache(cachePath, data):
             with open(f"./tempDataCache/{cacheName}.json", "w") as f:###########Issue somehwere here
                 json.dump(data, f, indent=4, default=str)  # Use default=str to handle non-serializable types
         elif extension == "csv":
+            if type(data) is not type(pd.DataFrame): data = pd.DataFrame(data)  # Ensure data is a DataFrame
             data.to_csv(f"./tempDataCache/{cacheName}.csv", index=None)  # Ensure data is a DataFrame
         else:
             raise ValueError("Unsupported file extension. Use 'json' or 'csv'.")
@@ -149,7 +155,7 @@ def isMarketOpen():
     return rtn
 
 @apiDecoratorFactory("alphaVan", "allHistoricData.csv")
-def getAllHistoric(ticker):
+def getAllHistoric(ticker, size=728):#limit in days
     """
         Gets all historic data for a given ticker from Alpha Vantage.
         Parameters:
@@ -159,13 +165,13 @@ def getAllHistoric(ticker):
         
         Note: This function fetches daily data for the ticker, not intraday.
     """
-    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey=H3S85LY8M5OL60UU&datatype=csv&outputsize=full"
+    url = f"https://www.alphavantage.co/query?function=TIME_SERIES_DAILY&symbol={ticker}&apikey={alphaVantageAPIKey}&datatype=csv&outputsize=full"
     r = requests.get(url)
-    data = pd.read_csv(StringIO(r.text), index_col=None)
+    data = pd.read_csv(StringIO(r.text), index_col=None).head(size)
     # print(data.head())
     return data
 
-@apiDecoratorFactory("finnhub", "quote.json")
+@apiDecoratorFactory("finnhub", "quote.csv")
 def getLastKnownData(ticker):
     """
         Gets the last known data for a given ticker from Finnhub.
@@ -176,7 +182,7 @@ def getLastKnownData(ticker):
         
         Note: This function fetches the most recent data point for the ticker.
     """
-    finnhub_client = finnhub.Client(api_key="d0pnqbhr01qgccua9u2gd0pnqbhr01qgccua9u30")
+    finnhub_client = finnhub.Client(api_key=finhubAPIKey)
     dataAsDict = finnhub_client.quote(ticker)
     df = pd.DataFrame([dataAsDict])#.drop(columns=["index"])
     return df #To get only the most recent ticker data
@@ -197,7 +203,7 @@ def getSMA(ticker, timespan="day", adjusted="true", window="50", series_type="cl
     Returns:
     - DataFrame containing the SMA data
     """
-    client = RESTClient("ue0MRgNduDhjpt9DSsFSORpImHpqUITc")
+    client = RESTClient(polygonAPIKey)
 
     sma = client.get_sma(
         ticker="AAPL",
@@ -215,5 +221,24 @@ def getSMA(ticker, timespan="day", adjusted="true", window="50", series_type="cl
 
     return serializable
 
+@apiDecoratorFactory("finnhub", "finAsReported.json")
+def getFinancialsLastReported(ticker, freq='annual'):
+    """
+    Get the last reported financials for a given ticker.
+    
+    Returns:
+    - DataFrame containing the last reported financials
+    """
+    data = finnhubClient.financials_reported(symbol=ticker, freq=freq)
+    #usefulData = data["data"]
+    #print("USEFUL DATA TYPE:", type(usefulData))
+    #usefulData = usefulData[len(usefulData)-1]
+    #print("USEFUL DATA:", usefulData)
+    #print("USEFUL DATA:", type(usefulData))
+    #print("USEFUL DATA as PD:", pd.DataFrame(usefulData))
+    return data#usefulData#finnhubClient.financials_reported(symbol=ticker, freq=freq)
+    
+
+   
 
 

@@ -139,6 +139,6 @@ class MainStart:
         
         
         
-
-MainMenu = MainStart()
-MainMenu.mainMenu()
+if __name__ == "__main__":
+    MainMenu = MainStart()
+    MainMenu.mainMenu()
